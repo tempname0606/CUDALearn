@@ -2,9 +2,11 @@
 #include <stdio.h>
 
 #define N 512
+#define THREADS_PER_BLOCK 8
 
 __global__ void deviceAdd(int* a, int* b, int* c){
-	c[blockIdx.x] = a[blockIdx.x] + b[blockIdx.x];
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	c[index] = a[index] + b[index];
 }
 
 void hostAdd(int* a, int* b, int* c){
@@ -29,6 +31,9 @@ int main(int argc, char** argv){
 	int *a, *b, *c;
 	int *devA, *devB, *devC;
 	int size = N * sizeof(int);
+	
+	int numOfBlocks = N / THREADS_PER_BLOCK;
+
 
 	// Allocate space for host copies of a, b, c
 	a = (int*)malloc(size);
@@ -49,7 +54,7 @@ int main(int argc, char** argv){
 	cudaMemcpy(devB, b, N * sizeof(int), cudaMemcpyHostToDevice);
 	
 	// N blocks - 1 Thread per block
-	deviceAdd<<<N, 1>>>(devA, devB, devC);
+	deviceAdd<<<numOfBlocks, THREADS_PER_BLOCK>>>(devA, devB, devC);
 	
 	// Copy results to host
 	cudaMemcpy(c, devC, N * sizeof(int), cudaMemcpyDeviceToHost);
